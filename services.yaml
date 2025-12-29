@@ -1,0 +1,44 @@
+# ServiceAtlas 预注册服务配置
+# 在此文件中定义的服务会在 ServiceAtlas 启动时自动注册
+
+services:
+  # DeckView 文档预览服务示例（取消注释启用）
+  # - id: deckview
+  #   name: DeckView 文档预览服务
+  #   host: 127.0.0.1
+  #   port: 8000
+  #   protocol: http
+  #   health_check_path: /docs
+  #   is_gateway: false
+  #   metadata:
+  #     version: "1.0.0"
+  #     description: 在线预览 PPT、PDF、Word、Markdown 文件
+
+  # 权限网关服务示例（取消注释启用）
+  # - id: auth-gateway
+  #   name: 权限认证网关
+  #   host: 127.0.0.1
+  #   port: 8080
+  #   protocol: http
+  #   health_check_path: /health
+  #   is_gateway: true
+  #   metadata:
+  #     version: "1.0.0"
+  #     description: 统一认证入口
+
+# 预定义的依赖关系（可选）
+dependencies:
+  # 示例：网关依赖 DeckView
+  # - source: auth-gateway
+  #   target: deckview
+  #   description: 网关转发文档请求到 DeckView
+
+# 预定义的路由规则（可选）
+routes:
+  # 示例：网关路由规则
+  # - gateway: auth-gateway
+  #   path_pattern: /docs/*
+  #   target: deckview
+  #   strip_prefix: true
+  #   strip_path: /docs
+  #   priority: 10

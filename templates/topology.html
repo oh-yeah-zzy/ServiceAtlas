@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="topology-page">
+    <div class="page-header">
+        <h1>服务依赖拓扑</h1>
+        <button class="btn btn-primary" onclick="showDependencyModal()">
+            + 添加依赖
+        </button>
+    </div>
+
+    <div class="topology-container">
+        <div id="topology-graph"></div>
+    </div>
+
+    <div class="topology-legend">
+        <div class="legend-item">
+            <span class="legend-dot gateway"></span> 网关服务
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot healthy"></span> 健康服务
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot unhealthy"></span> 异常服务
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot unknown"></span> 未知状态
+        </div>
+    </div>
+</div>
+
+<!-- 添加依赖模态框 -->
+<div id="dependency-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>添加依赖关系</h2>
+            <button class="close-btn" onclick="hideDependencyModal()">&times;</button>
+        </div>
+        <form id="dependency-form" onsubmit="addDependency(event)">
+            <div class="form-group">
+                <label for="source-service">调用方服务 *</label>
+                <select id="source-service" name="source_service_id" required>
+                    <option value="">选择服务...</option>
+                    {% for node in topology.nodes %}
+                    <option value="{{ node.id }}">{{ node.name }} ({{ node.id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="target-service">被调用服务 *</label>
+                <select id="target-service" name="target_service_id" required>
+                    <option value="">选择服务...</option>
+                    {% for node in topology.nodes %}
+                    <option value="{{ node.id }}">{{ node.name }} ({{ node.id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="dep-description">依赖说明</label>
+                <input type="text" id="dep-description" name="description"
+                       placeholder="如: 调用文档服务获取预览">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideDependencyModal()">
+                    取消
+                </button>
+                <button type="submit" class="btn btn-primary">添加</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const topologyData = {{ topology | tojson }};
+
+function renderTopology() {
+    const container = document.getElementById('topology-graph');
+    const width = container.clientWidth;
+    const height = 500;
+
+    // 清空容器
+    container.innerHTML = '';
+
+    if (topologyData.nodes.length === 0) {
+        container.innerHTML = '<div class="empty-message">暂无服务数据</div>';
+        return;
+    }
+
+    const svg = d3.select('#topology-graph')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+    // 定义箭头标记
+    svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '-0 -5 10 10')
+        .attr('refX', 25)
+        .attr('refY', 0)
+        .attr('orient', 'auto')
+        .attr('markerWidth', 8)
+        .attr('markerHeight', 8)
+        .append('path')
+        .attr('d', 'M 0,-5 L 10,0 L 0,5')
+        .attr('fill', '#999');
+
+    // 创建力导向图
+    const simulation = d3.forceSimulation(topologyData.nodes)
+        .force('link', d3.forceLink(topologyData.edges)
+            .id(d => d.id)
+            .distance(150))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2));
+
+    // 绘制连线
+    const link = svg.append('g')
+        .selectAll('line')
+        .data(topologyData.edges)
+        .join('line')
+        .attr('stroke', '#999')
+        .attr('stroke-width', 2)
+        .attr('marker-end', 'url(#arrowhead)');
+
+    // 绘制节点
+    const node = svg.append('g')
+        .selectAll('g')
+        .data(topologyData.nodes)
+        .join('g')
+        .call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+
+    // 节点圆形
+    node.append('circle')
+        .attr('r', 20)
+        .attr('fill', d => getNodeColor(d));
+
+    // 节点标签
+    node.append('text')
+        .attr('dy', 35)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#333')
+        .text(d => d.name);
+
+    // 更新位置
+    simulation.on('tick', () => {
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+    }
+
+    function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+    }
+
+    function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+    }
+}
+
+function getNodeColor(node) {
+    if (node.is_gateway) return '#9b59b6';  // 紫色 - 网关
+    switch (node.status) {
+        case 'healthy': return '#2ecc71';    // 绿色 - 健康
+        case 'unhealthy': return '#e74c3c';  // 红色 - 异常
+        default: return '#95a5a6';           // 灰色 - 未知
+    }
+}
+
+function showDependencyModal() {
+    document.getElementById('dependency-modal').classList.add('show');
+}
+
+function hideDependencyModal() {
+    document.getElementById('dependency-modal').classList.remove('show');
+    document.getElementById('dependency-form').reset();
+}
+
+async function addDependency(event) {
+    event.preventDefault();
+    const form = event.target;
+    const data = {
+        source_service_id: form.source_service_id.value,
+        target_service_id: form.target_service_id.value,
+        description: form.description.value || null
+    };
+
+    try {
+        const response = await fetch('/api/v1/dependencies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert('依赖关系添加成功!');
+            location.reload();
+        } else {
+            const error = await response.json();
+            alert('添加失败: ' + (error.detail || '未知错误'));
+        }
+    } catch (error) {
+        alert('添加失败: ' + error.message);
+    }
+}
+
+// 页面加载完成后渲染拓扑图
+document.addEventListener('DOMContentLoaded', renderTopology);
+window.addEventListener('resize', renderTopology);
+</script>
+{% endblock %}

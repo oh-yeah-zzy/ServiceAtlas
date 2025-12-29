@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="/">ServiceAtlas</a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">仪表盘</a></li>
+            <li><a href="/services" class="{% if request.url.path == '/services' %}active{% endif %}">服务管理</a></li>
+            <li><a href="/topology" class="{% if request.url.path == '/topology' %}active{% endif %}">依赖拓扑</a></li>
+            <li><a href="/docs" target="_blank">API 文档</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>ServiceAtlas v1.0.0 - 轻量级服务注册中心</p>
+    </footer>
+
+    <script src="/static/js/main.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard">
+    <h1>服务注册中心概览</h1>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon total">&#128187;</div>
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.total }}</span>
+                <span class="stat-label">注册服务</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon healthy">&#9989;</div>
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.healthy }}</span>
+                <span class="stat-label">健康服务</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon unhealthy">&#10060;</div>
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.unhealthy }}</span>
+                <span class="stat-label">异常服务</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon gateways">&#128279;</div>
+            <div class="stat-info">
+                <span class="stat-value">{{ stats.gateways }}</span>
+                <span class="stat-label">网关服务</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-primary" onclick="triggerHealthCheck()">
+            触发健康检查
+        </button>
+        <a href="/services" class="btn btn-secondary">管理服务</a>
+        <a href="/topology" class="btn btn-secondary">查看拓扑</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function triggerHealthCheck() {
+    try {
+        const response = await fetch('/api/v1/monitor/health-check', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        alert(`健康检查完成!\n检查: ${data.result.checked} 个服务\n健康: ${data.result.healthy}\n异常: ${data.result.unhealthy}`);
+        location.reload();
+    } catch (error) {
+        alert('健康检查失败: ' + error.message);
+    }
+}
+</script>
+{% endblock %}
