@@ -203,7 +203,8 @@ async function addDependency(event) {
     };
 
     try {
-        const response = await fetch('/api/v1/dependencies', {
+        // 使用 BASE_PATH 前缀以支持反向代理场景
+        const response = await fetch(window.BASE_PATH + '/api/v1/dependencies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)

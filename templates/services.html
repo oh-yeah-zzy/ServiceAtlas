@@ -147,7 +147,8 @@ async function registerService(event) {
     };
 
     try {
-        const response = await fetch('/api/v1/services', {
+        // 使用 BASE_PATH 前缀以支持反向代理场景
+        const response = await fetch(window.BASE_PATH + '/api/v1/services', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -171,7 +172,8 @@ async function deleteService(serviceId) {
     }
 
     try {
-        const response = await fetch(`/api/v1/services/${serviceId}`, {
+        // 使用 BASE_PATH 前缀以支持反向代理场景
+        const response = await fetch(window.BASE_PATH + `/api/v1/services/${serviceId}`, {
             method: 'DELETE'
         });
 
