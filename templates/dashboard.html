@@ -42,8 +42,8 @@
         <button class="btn btn-primary" onclick="triggerHealthCheck()">
             触发健康检查
         </button>
-        <a href="/services" class="btn btn-secondary">管理服务</a>
-        <a href="/topology" class="btn btn-secondary">查看拓扑</a>
+        <a href="{{ base_path }}/services" class="btn btn-secondary">管理服务</a>
+        <a href="{{ base_path }}/topology" class="btn btn-secondary">查看拓扑</a>
     </div>
 </div>
 {% endblock %}
@@ -52,7 +52,8 @@
 <script>
 async function triggerHealthCheck() {
     try {
-        const response = await fetch('/api/v1/monitor/health-check', {
+        // 使用 BASE_PATH 前缀以支持反向代理场景
+        const response = await fetch(window.BASE_PATH + '/api/v1/monitor/health-check', {
             method: 'POST'
         });
         const data = await response.json();
