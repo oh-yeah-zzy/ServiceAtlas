@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import BASE_DIR
+from app.config import BASE_DIR, settings
 from app.database import get_db
 from app.services import discovery as discovery_service
 from app.services import dependency as dependency_service
@@ -18,6 +18,16 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
+def get_template_context(request: Request, title: str, **kwargs) -> dict:
+    """生成模板上下文，自动包含 base_path"""
+    return {
+        "request": request,
+        "title": title,
+        "base_path": settings.base_path.rstrip("/"),
+        **kwargs,
+    }
+
+
 @router.get("/", include_in_schema=False)
 async def dashboard(
     request: Request,
@@ -27,11 +37,7 @@ async def dashboard(
     stats = await discovery_service.get_service_stats(db)
     return templates.TemplateResponse(
         "dashboard.html",
-        {
-            "request": request,
-            "title": "ServiceAtlas - 仪表盘",
-            "stats": stats,
-        }
+        get_template_context(request, "ServiceAtlas - 仪表盘", stats=stats)
     )
 
 
@@ -45,11 +51,7 @@ async def services_page(
     services = await registry_service.get_all_services(db)
     return templates.TemplateResponse(
         "services.html",
-        {
-            "request": request,
-            "title": "ServiceAtlas - 服务管理",
-            "services": services,
-        }
+        get_template_context(request, "ServiceAtlas - 服务管理", services=services)
     )
 
 
@@ -62,9 +64,5 @@ async def topology_page(
     topology = await dependency_service.get_topology(db)
     return templates.TemplateResponse(
         "topology.html",
-        {
-            "request": request,
-            "title": "ServiceAtlas - 依赖拓扑",
-            "topology": topology.model_dump(),
-        }
+        get_template_context(request, "ServiceAtlas - 依赖拓扑", topology=topology.model_dump())
     )

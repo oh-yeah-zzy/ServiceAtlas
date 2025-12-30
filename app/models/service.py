@@ -40,6 +40,9 @@ class Service(Base):
     # 是否作为入口网关
     is_gateway: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # 代理访问路径前缀（如 /s/deckview，用于网关代理）
+    base_path: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+
     # 扩展元数据（版本号、标签等）
     service_meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 

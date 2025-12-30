@@ -89,6 +89,7 @@ services:
     protocol: http
     health_check_path: /docs
     is_gateway: false
+    base_path: /s/deckview  # 通过 Aegis 网关代理时的路径前缀
     metadata:
       version: "1.0.0"
       description: 在线预览 PPT、PDF、Word、Markdown 文件
@@ -190,7 +191,8 @@ curl -X POST http://localhost:9000/api/v1/services \
     "name": "DeckView 文档预览服务",
     "host": "127.0.0.1",
     "port": 8000,
-    "health_check_path": "/docs"
+    "health_check_path": "/docs",
+    "base_path": "/s/deckview"
   }'
 
 # 心跳上报
@@ -202,6 +204,8 @@ curl -X DELETE http://localhost:9000/api/v1/services/deckview
 
 **优点**: 跨语言支持
 **适用**: 非 Python 服务、测试调试
+
+> **关于 base_path**：如果服务需要通过 Aegis 等认证网关代理访问，需要在注册时指定 `base_path`（如 `/s/deckview`），并在服务启动时设置相应的环境变量（如 `DECKVIEW_BASE_PATH=/s/deckview`）。如果不需要代理访问，可以省略该字段。
 
 ---
 
@@ -272,7 +276,30 @@ HEALTH_CHECK_INTERVAL=30    # 检查间隔（秒）
 HEALTH_CHECK_TIMEOUT=5      # 单次超时（秒）
 UNHEALTHY_THRESHOLD=3       # 失败次数阈值
 HEARTBEAT_TIMEOUT=60        # 心跳超时（秒）
+
+# 反向代理配置（通过网关访问时设置）
+BASE_PATH=/s/serviceatlas   # URL 前缀，用于 Aegis 等网关代理
 ```
+
+### 反向代理配置（Base Path）
+
+当 ServiceAtlas 通过认证网关（如 Aegis）代理访问时，需要设置 `BASE_PATH` 环境变量，使静态资源和页面链接正确工作。
+
+**场景说明**：
+- 直接访问：`http://localhost:9000/` → 不需要设置 BASE_PATH
+- 通过网关代理访问：`http://aegis:8000/s/serviceatlas/` → 需要设置 `BASE_PATH=/s/serviceatlas`
+
+**启动示例**：
+
+```bash
+# 直接访问模式（不设置）
+python run.py --host 127.0.0.1 --port 9000
+
+# 通过 Aegis 网关代理访问（设置 BASE_PATH）
+BASE_PATH=/s/serviceatlas python run.py --host 127.0.0.1 --port 9000
+```
+
+**注意**：设置 BASE_PATH 后，直接访问 `http://localhost:9000/` 将无法正常工作，因为静态资源路径会变成 `/s/serviceatlas/static/...`。请根据实际访问方式选择是否设置
 
 ### SDK 配置参数
 
@@ -286,6 +313,7 @@ HEARTBEAT_TIMEOUT=60        # 心跳超时（秒）
 | `protocol` | str | `http` | 协议类型 |
 | `health_check_path` | str | `/health` | 健康检查路径 |
 | `is_gateway` | bool | `False` | 是否为网关 |
+| `base_path` | str | `""` | 代理路径前缀（通过网关代理时设置） |
 | `metadata` | dict | `None` | 扩展元数据 |
 | `heartbeat_interval` | int | `30` | 心跳间隔（秒） |
 

@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="{{ base_path }}/static/css/style.css">
+    <!-- 将 base_path 传递给 JavaScript -->
+    <script>window.BASE_PATH = "{{ base_path }}";</script>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="/">ServiceAtlas</a>
+            <a href="{{ base_path }}/">ServiceAtlas</a>
         </div>
         <ul class="nav-links">
-            <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">仪表盘</a></li>
-            <li><a href="/services" class="{% if request.url.path == '/services' %}active{% endif %}">服务管理</a></li>
-            <li><a href="/topology" class="{% if request.url.path == '/topology' %}active{% endif %}">依赖拓扑</a></li>
-            <li><a href="/docs" target="_blank">API 文档</a></li>
+            <li><a href="{{ base_path }}/" class="{% if request.url.path == base_path ~ '/' or request.url.path == '/' %}active{% endif %}">仪表盘</a></li>
+            <li><a href="{{ base_path }}/services" class="{% if '/services' in request.url.path %}active{% endif %}">服务管理</a></li>
+            <li><a href="{{ base_path }}/topology" class="{% if '/topology' in request.url.path %}active{% endif %}">依赖拓扑</a></li>
+            <li><a href="{{ base_path }}/docs" target="_blank">API 文档</a></li>
         </ul>
     </nav>
 
@@ -27,7 +29,7 @@
         <p>ServiceAtlas v1.0.0 - 轻量级服务注册中心</p>
     </footer>
 
-    <script src="/static/js/main.js"></script>
+    <script src="{{ base_path }}/static/js/main.js"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

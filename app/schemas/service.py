@@ -54,6 +54,12 @@ class ServiceCreate(BaseModel):
         default=False,
         description="是否作为入口网关"
     )
+    base_path: Optional[str] = Field(
+        default=None,
+        max_length=256,
+        description="代理访问路径前缀（如 /s/deckview），用于网关代理场景",
+        examples=["/s/deckview", "/services/auth"]
+    )
     service_meta: Optional[dict[str, Any]] = Field(
         default=None,
         description="扩展元数据（版本号、标签等）",
@@ -70,6 +76,7 @@ class ServiceUpdate(BaseModel):
     protocol: Optional[str] = None
     health_check_path: Optional[str] = Field(None, max_length=256)
     is_gateway: Optional[bool] = None
+    base_path: Optional[str] = Field(None, max_length=256)
     service_meta: Optional[dict[str, Any]] = None
 
 
@@ -84,6 +91,7 @@ class ServiceResponse(BaseModel):
     health_check_path: str
     status: str
     is_gateway: bool
+    base_path: Optional[str] = None
     service_meta: Optional[dict[str, Any]] = None
     registered_at: datetime
     last_heartbeat: Optional[datetime] = None

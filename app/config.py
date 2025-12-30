@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     # API 前缀
     api_prefix: str = "/api/v1"
 
+    # 自注册配置
+    service_id: str = "serviceatlas"  # 服务唯一标识
+    self_register: bool = True  # 是否自注册到服务列表
+
+    # Base Path（用于反向代理场景，如通过 /s/serviceatlas/ 访问）
+    # 设置后所有静态资源和链接都会添加此前缀
+    base_path: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

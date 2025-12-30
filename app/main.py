@@ -15,10 +15,19 @@ from app.api import api_router
 from app.web.routes import router as web_router
 from app.services.health import check_all_services, check_heartbeat_timeout
 from app.services.preload import preload_services
+from app.services.registry import register_service, heartbeat as service_heartbeat
+from app.schemas.service import ServiceCreate
 
 
 # 健康检查调度器
 scheduler = AsyncIOScheduler()
+
+
+async def self_heartbeat():
+    """ServiceAtlas 自心跳任务"""
+    if settings.self_register:
+        async with async_session_maker() as db:
+            await service_heartbeat(db, settings.service_id)
 
 
 @asynccontextmanager
@@ -33,6 +42,25 @@ async def lifespan(app: FastAPI):
     async with async_session_maker() as db:
         await preload_services(db)
 
+        # 自注册：将 ServiceAtlas 自己注册到服务列表
+        if settings.self_register:
+            self_service = ServiceCreate(
+                id=settings.service_id,
+                name=f"{settings.app_name} 服务注册中心",
+                host=settings.host,
+                port=settings.port,
+                protocol="http",
+                health_check_path="/health",
+                is_gateway=False,
+                base_path=settings.base_path if settings.base_path else None,
+                service_meta={
+                    "version": settings.app_version,
+                    "description": "服务注册与发现中心",
+                },
+            )
+            await register_service(db, self_service)
+            print(f"ServiceAtlas 已自注册（ID: {settings.service_id}, base_path: {settings.base_path or '未设置'}）")
+
     # 启动健康检查定时任务
     scheduler.add_job(
         check_all_services,
@@ -46,6 +74,14 @@ async def lifespan(app: FastAPI):
         seconds=settings.health_check_interval,
         id='heartbeat_timeout'
     )
+    # 自心跳任务（保持 ServiceAtlas 自己的 healthy 状态）
+    if settings.self_register:
+        scheduler.add_job(
+            self_heartbeat,
+            'interval',
+            seconds=30,  # 每 30 秒发送一次自心跳
+            id='self_heartbeat'
+        )
     scheduler.start()
     print(f"健康检查调度器已启动（间隔: {settings.health_check_interval}秒）")
 

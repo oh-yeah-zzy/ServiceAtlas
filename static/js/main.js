@@ -1,5 +1,8 @@
 /* ServiceAtlas 前端脚本 */
 
+// 获取 base path（从模板传递）
+const BASE_PATH = window.BASE_PATH || '';
+
 // 通用 API 请求函数
 async function apiRequest(url, options = {}) {
     const defaultOptions = {
@@ -8,7 +11,10 @@ async function apiRequest(url, options = {}) {
         },
     };
 
-    const response = await fetch(url, { ...defaultOptions, ...options });
+    // 如果 URL 以 / 开头，添加 BASE_PATH 前缀
+    const fullUrl = url.startsWith('/') ? BASE_PATH + url : url;
+
+    const response = await fetch(fullUrl, { ...defaultOptions, ...options });
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: '请求失败' }));

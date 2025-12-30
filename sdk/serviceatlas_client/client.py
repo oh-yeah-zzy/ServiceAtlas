@@ -46,8 +46,10 @@ class ServiceAtlasClient:
         protocol: str = "http",
         health_check_path: str = "/health",
         is_gateway: bool = False,
+        base_path: str = "",
         metadata: Optional[Dict[str, Any]] = None,
         heartbeat_interval: int = 30,
+        trust_env: bool = True,
     ):
         """
         初始化客户端
@@ -61,8 +63,10 @@ class ServiceAtlasClient:
             protocol: 协议（http/https）
             health_check_path: 健康检查路径
             is_gateway: 是否作为网关服务
+            base_path: 代理路径前缀（通过网关代理时设置，如 /s/deckview）
             metadata: 扩展元数据
             heartbeat_interval: 心跳间隔（秒）
+            trust_env: 是否信任环境变量中的代理配置（默认 True，设为 False 可禁用代理）
         """
         self.registry_url = registry_url.rstrip("/")
         self.service_id = service_id
@@ -72,8 +76,10 @@ class ServiceAtlasClient:
         self.protocol = protocol
         self.health_check_path = health_check_path
         self.is_gateway = is_gateway
+        self.base_path = base_path
         self.metadata = metadata or {}
         self.heartbeat_interval = heartbeat_interval
+        self.trust_env = trust_env
 
         self._running = False
         self._heartbeat_thread: Optional[threading.Thread] = None
@@ -130,19 +136,25 @@ class ServiceAtlasClient:
     def _register(self) -> bool:
         """注册服务到 ServiceAtlas"""
         try:
-            with httpx.Client(timeout=10) as client:
+            # 构建注册数据
+            register_data = {
+                "id": self.service_id,
+                "name": self.service_name,
+                "host": self.host,
+                "port": self.port,
+                "protocol": self.protocol,
+                "health_check_path": self.health_check_path,
+                "is_gateway": self.is_gateway,
+                "service_meta": self.metadata,
+            }
+            # 只有设置了 base_path 才发送该字段
+            if self.base_path:
+                register_data["base_path"] = self.base_path
+
+            with httpx.Client(timeout=10, trust_env=self.trust_env) as client:
                 response = client.post(
                     f"{self.registry_url}/api/v1/services",
-                    json={
-                        "id": self.service_id,
-                        "name": self.service_name,
-                        "host": self.host,
-                        "port": self.port,
-                        "protocol": self.protocol,
-                        "health_check_path": self.health_check_path,
-                        "is_gateway": self.is_gateway,
-                        "service_meta": self.metadata,
-                    }
+                    json=register_data
                 )
                 if response.status_code in (200, 201):
                     return True
@@ -156,7 +168,7 @@ class ServiceAtlasClient:
     def _unregister(self):
         """从 ServiceAtlas 注销服务"""
         try:
-            with httpx.Client(timeout=5) as client:
+            with httpx.Client(timeout=5, trust_env=self.trust_env) as client:
                 client.delete(
                     f"{self.registry_url}/api/v1/services/{self.service_id}"
                 )
@@ -166,7 +178,7 @@ class ServiceAtlasClient:
     def _heartbeat(self) -> bool:
         """发送一次心跳"""
         try:
-            with httpx.Client(timeout=5) as client:
+            with httpx.Client(timeout=5, trust_env=self.trust_env) as client:
                 response = client.post(
                     f"{self.registry_url}/api/v1/services/{self.service_id}/heartbeat"
                 )
@@ -201,9 +213,28 @@ class AsyncServiceAtlasClient:
         protocol: str = "http",
         health_check_path: str = "/health",
         is_gateway: bool = False,
+        base_path: str = "",
         metadata: Optional[Dict[str, Any]] = None,
         heartbeat_interval: int = 30,
+        trust_env: bool = True,
     ):
+        """
+        初始化异步客户端
+
+        Args:
+            registry_url: ServiceAtlas 注册中心地址
+            service_id: 服务唯一标识
+            service_name: 服务显示名称
+            host: 服务地址
+            port: 服务端口
+            protocol: 协议（http/https）
+            health_check_path: 健康检查路径
+            is_gateway: 是否作为网关服务
+            base_path: 代理路径前缀（通过网关代理时设置，如 /s/deckview）
+            metadata: 扩展元数据
+            heartbeat_interval: 心跳间隔（秒）
+            trust_env: 是否信任环境变量中的代理配置（默认 True，设为 False 可禁用代理）
+        """
         self.registry_url = registry_url.rstrip("/")
         self.service_id = service_id
         self.service_name = service_name
@@ -212,8 +243,10 @@ class AsyncServiceAtlasClient:
         self.protocol = protocol
         self.health_check_path = health_check_path
         self.is_gateway = is_gateway
+        self.base_path = base_path
         self.metadata = metadata or {}
         self.heartbeat_interval = heartbeat_interval
+        self.trust_env = trust_env
 
         self._running = False
         self._heartbeat_task: Optional[asyncio.Task] = None
@@ -252,19 +285,25 @@ class AsyncServiceAtlasClient:
     async def _register(self) -> bool:
         """注册服务"""
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            # 构建注册数据
+            register_data = {
+                "id": self.service_id,
+                "name": self.service_name,
+                "host": self.host,
+                "port": self.port,
+                "protocol": self.protocol,
+                "health_check_path": self.health_check_path,
+                "is_gateway": self.is_gateway,
+                "service_meta": self.metadata,
+            }
+            # 只有设置了 base_path 才发送该字段
+            if self.base_path:
+                register_data["base_path"] = self.base_path
+
+            async with httpx.AsyncClient(timeout=10, trust_env=self.trust_env) as client:
                 response = await client.post(
                     f"{self.registry_url}/api/v1/services",
-                    json={
-                        "id": self.service_id,
-                        "name": self.service_name,
-                        "host": self.host,
-                        "port": self.port,
-                        "protocol": self.protocol,
-                        "health_check_path": self.health_check_path,
-                        "is_gateway": self.is_gateway,
-                        "service_meta": self.metadata,
-                    }
+                    json=register_data
                 )
                 return response.status_code in (200, 201)
         except Exception as e:
@@ -274,7 +313,7 @@ class AsyncServiceAtlasClient:
     async def _unregister(self):
         """注销服务"""
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
+            async with httpx.AsyncClient(timeout=5, trust_env=self.trust_env) as client:
                 await client.delete(
                     f"{self.registry_url}/api/v1/services/{self.service_id}"
                 )
@@ -285,7 +324,7 @@ class AsyncServiceAtlasClient:
         """心跳循环"""
         while self._running:
             try:
-                async with httpx.AsyncClient(timeout=5) as client:
+                async with httpx.AsyncClient(timeout=5, trust_env=self.trust_env) as client:
                     await client.post(
                         f"{self.registry_url}/api/v1/services/{self.service_id}/heartbeat"
                     )

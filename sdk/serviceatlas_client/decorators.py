@@ -17,8 +17,10 @@ def register_service(
     protocol: str = "http",
     health_check_path: str = "/health",
     is_gateway: bool = False,
+    base_path: str = "",
     metadata: Optional[Dict[str, Any]] = None,
     heartbeat_interval: int = 30,
+    trust_env: bool = True,
 ):
     """
     FastAPI 应用注册装饰器
@@ -34,6 +36,7 @@ def register_service(
         service_name="DeckView 文档预览服务",
         host="127.0.0.1",
         port=8000,
+        base_path="/s/deckview",  # 通过网关代理时设置
     )
     def create_app():
         app = FastAPI()
@@ -62,8 +65,10 @@ def register_service(
                 protocol=protocol,
                 health_check_path=health_check_path,
                 is_gateway=is_gateway,
+                base_path=base_path,
                 metadata=metadata,
                 heartbeat_interval=heartbeat_interval,
+                trust_env=trust_env,
             )
 
             # 注入生命周期事件
@@ -91,8 +96,10 @@ def fastapi_lifespan(
     protocol: str = "http",
     health_check_path: str = "/health",
     is_gateway: bool = False,
+    base_path: str = "",
     metadata: Optional[Dict[str, Any]] = None,
     heartbeat_interval: int = 30,
+    trust_env: bool = True,
 ):
     """
     FastAPI lifespan 上下文管理器（推荐用于 FastAPI 0.95+）
@@ -108,6 +115,7 @@ def fastapi_lifespan(
         service_name="DeckView 文档预览服务",
         host="127.0.0.1",
         port=8000,
+        base_path="/s/deckview",  # 通过网关代理时设置
     )
 
     app = FastAPI(lifespan=lifespan)
@@ -124,8 +132,10 @@ def fastapi_lifespan(
         protocol=protocol,
         health_check_path=health_check_path,
         is_gateway=is_gateway,
+        base_path=base_path,
         metadata=metadata,
         heartbeat_interval=heartbeat_interval,
+        trust_env=trust_env,
     )
 
     @asynccontextmanager

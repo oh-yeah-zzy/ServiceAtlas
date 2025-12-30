@@ -70,6 +70,7 @@ async def register_service(db: AsyncSession, service_data: ServiceCreate) -> Ser
         return existing
     else:
         # 创建新服务
+        # base_path 只有在明确指定时才设置，不自动生成
         service = Service(
             id=service_id,
             name=service_data.name,
@@ -78,6 +79,7 @@ async def register_service(db: AsyncSession, service_data: ServiceCreate) -> Ser
             protocol=service_data.protocol,
             health_check_path=service_data.health_check_path,
             is_gateway=service_data.is_gateway,
+            base_path=service_data.base_path,  # 可能为 None
             service_meta=service_data.service_meta,
             registered_at=datetime.utcnow(),
             last_heartbeat=datetime.utcnow(),
