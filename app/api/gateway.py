@@ -5,6 +5,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -14,6 +15,8 @@ from app.schemas.route import (
     RouteResponse,
     GatewayRouteResponse,
     TargetServiceInfo,
+    AuthConfig,
+    AuthServiceInfo,
 )
 from app.services import gateway as gateway_service
 from app.models.service import Service
@@ -155,6 +158,14 @@ async def get_gateway_routes(
         db, gateway_id=x_gateway_id, enabled_only=True
     )
 
+    # 查找所有认证服务（service_type = "authentication"）
+    auth_services = {}
+    auth_result = await db.execute(select(Service))
+    for svc in auth_result.scalars():
+        service_meta = svc.service_meta or {}
+        if service_meta.get("service_type") == "authentication":
+            auth_services[svc.id] = svc
+
     # 构建响应，包含目标服务的完整信息
     result = []
     for route in routes:
@@ -164,9 +175,46 @@ async def get_gateway_routes(
             # 目标服务不存在，跳过此路由
             continue
 
+        # 构建认证配置
+        auth_config_data = route.auth_config
+        auth_config = None
+        auth_service_info = None
+
+        if auth_config_data:
+            # 复制一份，避免修改原始数据
+            auth_config_dict = dict(auth_config_data)
+
+            # 如果指定了认证服务，获取认证服务信息并动态组装 login_redirect
+            auth_service_id = auth_config_dict.get("auth_service_id")
+            if auth_service_id and auth_service_id in auth_services:
+                auth_svc = auth_services[auth_service_id]
+                service_meta = auth_svc.service_meta or {}
+
+                auth_service_info = AuthServiceInfo(
+                    id=auth_svc.id,
+                    name=auth_svc.name,
+                    base_url=auth_svc.base_url,
+                    auth_endpoint=service_meta.get("auth_endpoint"),
+                )
+
+                # 动态组装 login_redirect（如果路由规则中未指定）
+                if not auth_config_dict.get("login_redirect"):
+                    login_path = service_meta.get("login_path")
+                    if login_path and auth_svc.base_url:
+                        # 确保路径以 / 开头
+                        if not login_path.startswith("/"):
+                            login_path = "/" + login_path
+                        # 组装完整的登录重定向 URL
+                        auth_config_dict["login_redirect"] = (
+                            auth_svc.base_url.rstrip("/") + login_path
+                        )
+
+            auth_config = AuthConfig(**auth_config_dict)
+
         result.append(GatewayRouteResponse(
             id=route.id,
             path_pattern=route.path_pattern,
+            methods=route.methods if hasattr(route, 'methods') else "*",
             target_service_id=route.target_service_id,
             target_service=TargetServiceInfo(
                 id=target_service.id,
@@ -181,6 +229,8 @@ async def get_gateway_routes(
             strip_path=route.strip_path,
             priority=route.priority,
             enabled=route.enabled,
+            auth_config=auth_config,
+            auth_service=auth_service_info,
         ))
 
     return result

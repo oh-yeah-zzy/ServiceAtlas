@@ -146,8 +146,18 @@ function renderTopology() {
         .attr('fill', '#333')
         .text(d => d.name);
 
-    // 更新位置
+    // 节点半径和边距
+    const nodeRadius = 20;
+    const padding = 40;  // 额外边距，确保标签也在可视区域内
+
+    // 更新位置（添加边界约束）
     simulation.on('tick', () => {
+        // 限制节点在 SVG 边界内
+        topologyData.nodes.forEach(d => {
+            d.x = Math.max(nodeRadius + padding, Math.min(width - nodeRadius - padding, d.x));
+            d.y = Math.max(nodeRadius + padding, Math.min(height - nodeRadius - padding, d.y));
+        });
+
         link
             .attr('x1', d => d.source.x)
             .attr('y1', d => d.source.y)

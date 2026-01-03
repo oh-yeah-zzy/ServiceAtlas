@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # 服务器配置
     host: str = "127.0.0.1"
-    port: int = 9000
+    port: int = 8888
 
     # 数据库配置（SQLite）
     database_url: str = "sqlite+aiosqlite:///./serviceatlas.db"

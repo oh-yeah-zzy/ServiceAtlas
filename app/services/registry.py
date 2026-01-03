@@ -65,6 +65,11 @@ async def register_service(db: AsyncSession, service_data: ServiceCreate) -> Ser
         existing.last_heartbeat = datetime.utcnow()
         existing.status = "unknown"  # 重新注册后重置状态
         existing.consecutive_failures = 0
+
+        # 网关服务重新注册时，检查并补充创建路由
+        if service_data.is_gateway:
+            await _create_routes_for_existing_services(db, existing)
+
         await db.commit()
         await db.refresh(existing)
         return existing
@@ -92,6 +97,9 @@ async def register_service(db: AsyncSession, service_data: ServiceCreate) -> Ser
         # 为非网关服务自动创建默认路由规则
         if not service_data.is_gateway:
             await _create_default_route(db, service)
+        else:
+            # 网关服务注册时，为所有已存在的非网关服务创建路由
+            await _create_routes_for_existing_services(db, service)
 
         await db.commit()
         await db.refresh(service)
@@ -103,6 +111,9 @@ async def _create_default_route(db: AsyncSession, service: Service):
     为服务创建默认路由规则
 
     路由模式：/{service_id}/** → 该服务
+
+    如果服务在 service_meta 中声明了 auth_config，会自动添加到路由规则中。
+    认证服务（service_type="authentication"）默认不添加 auth_config。
     """
     # 查找网关服务（如果有多个，选第一个）
     result = await db.execute(
@@ -114,6 +125,35 @@ async def _create_default_route(db: AsyncSession, service: Service):
         # 没有网关服务，不创建路由
         return
 
+    await _create_route_for_service(db, gateway, service)
+
+
+async def _create_routes_for_existing_services(db: AsyncSession, gateway: Service):
+    """
+    网关注册时，为所有已存在的非网关服务创建默认路由
+
+    解决启动顺序问题：如果其他服务在网关之前注册，
+    此时没有网关，路由不会被创建。当网关注册时需要补充创建。
+    """
+    # 查找所有非网关服务
+    result = await db.execute(
+        select(Service).where(
+            Service.is_gateway == False,
+            Service.id != gateway.id
+        )
+    )
+    services = result.scalars().all()
+
+    for service in services:
+        await _create_route_for_service(db, gateway, service)
+
+
+async def _create_route_for_service(db: AsyncSession, gateway: Service, service: Service):
+    """
+    为单个服务创建默认路由规则
+
+    路由模式：/{service_id}/** → 该服务
+    """
     # 检查是否已存在该服务的路由
     existing_route = await db.execute(
         select(Route).where(Route.target_service_id == service.id)
@@ -121,6 +161,15 @@ async def _create_default_route(db: AsyncSession, service: Service):
     if existing_route.scalar_one_or_none():
         # 已存在路由，不重复创建
         return
+
+    # 从 service_meta 中提取认证配置
+    auth_config = None
+    service_meta = service.service_meta or {}
+
+    # 认证服务本身不需要被其他认证服务保护
+    if service_meta.get("service_type") != "authentication":
+        # 检查服务是否声明了认证需求
+        auth_config = service_meta.get("auth_config")
 
     # 创建默认路由
     route = Route(
@@ -131,6 +180,7 @@ async def _create_default_route(db: AsyncSession, service: Service):
         strip_path=f"/{service.id}",
         priority=10,
         enabled=True,
+        auth_config=auth_config,
     )
     db.add(route)
 

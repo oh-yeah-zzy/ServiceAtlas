@@ -100,6 +100,7 @@ async def preload_services(db_session):
                 strip_prefix=route.get("strip_prefix", False),
                 strip_path=route.get("strip_path"),
                 priority=route.get("priority", 0),
+                auth_config=route.get("auth_config"),  # 支持认证配置
             )
             result = await gateway_service.create_route(db_session, route_data)
             if result:

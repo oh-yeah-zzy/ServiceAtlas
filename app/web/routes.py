@@ -18,12 +18,25 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
+def get_base_path(request: Request) -> str:
+    """
+    获取 base path，优先从代理 header 读取
+
+    当通过 Hermes 网关代理访问时，X-Forwarded-Prefix 会包含路径前缀（如 /serviceatlas）
+    直接访问时使用配置中的 base_path
+    """
+    forwarded_prefix = request.headers.get("X-Forwarded-Prefix", "").rstrip("/")
+    if forwarded_prefix:
+        return forwarded_prefix
+    return settings.base_path.rstrip("/")
+
+
 def get_template_context(request: Request, title: str, **kwargs) -> dict:
     """生成模板上下文，自动包含 base_path"""
     return {
         "request": request,
         "title": title,
-        "base_path": settings.base_path.rstrip("/"),
+        "base_path": get_base_path(request),
         **kwargs,
     }
 

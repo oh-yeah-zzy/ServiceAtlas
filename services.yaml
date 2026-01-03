@@ -2,43 +2,72 @@
 # 在此文件中定义的服务会在 ServiceAtlas 启动时自动注册
 
 services:
-  # DeckView 文档预览服务示例（取消注释启用）
-  # - id: deckview
-  #   name: DeckView 文档预览服务
+  # 认证服务示例（Aegis）
+  # - id: aegis
+  #   name: Aegis 认证服务
   #   host: 127.0.0.1
   #   port: 8000
   #   protocol: http
-  #   health_check_path: /docs
+  #   health_check_path: /health
+  #   is_gateway: false
+  #   metadata:
+  #     service_type: authentication
+  #     login_path: /admin/login
+  #     auth_endpoint: /api/v1/auth/login
+  #     auth_methods:
+  #       - jwt
+
+  # DeckView 文档预览服务示例
+  # - id: deckview
+  #   name: DeckView 文档预览服务
+  #   host: 127.0.0.1
+  #   port: 8800
+  #   protocol: http
+  #   health_check_path: /health
   #   is_gateway: false
   #   metadata:
   #     version: "1.0.0"
   #     description: 在线预览 PPT、PDF、Word、Markdown 文件
+  #     auth_config:
+  #       require_auth: true
+  #       auth_service_id: aegis
+  #       public_paths:
+  #         - /health
+  #         - /api/docs
+  #         - /api/docs/**
 
-  # 权限网关服务示例（取消注释启用）
-  # - id: auth-gateway
-  #   name: 权限认证网关
+  # API 网关服务示例（Hermes）
+  # - id: hermes
+  #   name: Hermes API 网关
   #   host: 127.0.0.1
-  #   port: 8080
+  #   port: 8880
   #   protocol: http
   #   health_check_path: /health
   #   is_gateway: true
   #   metadata:
   #     version: "1.0.0"
-  #     description: 统一认证入口
+  #     description: 统一 API 入口
 
 # 预定义的依赖关系（可选）
 dependencies:
   # 示例：网关依赖 DeckView
-  # - source: auth-gateway
+  # - source: hermes
   #   target: deckview
   #   description: 网关转发文档请求到 DeckView
 
 # 预定义的路由规则（可选）
+# 注意：通常路由规则由服务注册时自动生成，无需手动配置
 routes:
-  # 示例：网关路由规则
-  # - gateway: auth-gateway
-  #   path_pattern: /docs/*
+  # 示例：带认证配置的路由规则
+  # - gateway: hermes
+  #   path_pattern: /deckview/**
   #   target: deckview
   #   strip_prefix: true
-  #   strip_path: /docs
+  #   strip_path: /deckview
   #   priority: 10
+  #   auth_config:
+  #     require_auth: true
+  #     auth_service_id: aegis
+  #     public_paths:
+  #       - /health
+  #       - /api/docs
