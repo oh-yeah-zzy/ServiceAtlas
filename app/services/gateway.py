@@ -137,3 +137,36 @@ def match_path(pattern: str, path: str) -> bool:
     """
     import fnmatch
     return fnmatch.fnmatch(path, pattern)
+
+
+async def find_route_for_service(
+    db: AsyncSession,
+    gateway_id: str,
+    target_service_id: str
+) -> Optional[Route]:
+    """
+    查找网关到指定目标服务的路由规则
+
+    用于动态组装认证服务的登录重定向路径。
+    例如：查找 hermes -> aegis 的路由，返回 /aegis/** 规则，
+    这样可以组装出 /aegis/admin/login 作为登录重定向路径。
+
+    Args:
+        db: 数据库会话
+        gateway_id: 网关服务 ID
+        target_service_id: 目标服务 ID
+
+    Returns:
+        匹配的路由规则，如果没有找到则返回 None
+    """
+    query = select(Route).where(
+        and_(
+            Route.gateway_service_id == gateway_id,
+            Route.target_service_id == target_service_id,
+            Route.enabled == True
+        )
+    ).order_by(Route.priority.desc())
+
+    result = await db.execute(query)
+    return result.scalars().first()
+

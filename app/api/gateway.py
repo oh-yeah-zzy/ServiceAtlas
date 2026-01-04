@@ -198,16 +198,28 @@ async def get_gateway_routes(
                 )
 
                 # 动态组装 login_redirect（如果路由规则中未指定）
+                # 使用网关代理路径而非认证服务的直接地址，因为外部只能通过网关访问
                 if not auth_config_dict.get("login_redirect"):
                     login_path = service_meta.get("login_path")
-                    if login_path and auth_svc.base_url:
+                    if login_path:
                         # 确保路径以 / 开头
                         if not login_path.startswith("/"):
                             login_path = "/" + login_path
-                        # 组装完整的登录重定向 URL
-                        auth_config_dict["login_redirect"] = (
-                            auth_svc.base_url.rstrip("/") + login_path
+                        # 查找网关到认证服务的路由，使用网关代理路径
+                        # 例如：网关有 /aegis/** -> aegis 的路由，则使用 /aegis/admin/login
+                        auth_route = await gateway_service.find_route_for_service(
+                            db, gateway_id=x_gateway_id, target_service_id=auth_service_id
                         )
+                        if auth_route and auth_route.strip_prefix:
+                            # 使用网关代理路径（相对路径，浏览器会自动补全域名）
+                            gateway_prefix = auth_route.strip_path or f"/{auth_service_id}"
+                            auth_config_dict["login_redirect"] = gateway_prefix + login_path
+                        else:
+                            # 回退到直接地址（认证服务没有网关路由时）
+                            if auth_svc.base_url:
+                                auth_config_dict["login_redirect"] = (
+                                    auth_svc.base_url.rstrip("/") + login_path
+                                )
 
             auth_config = AuthConfig(**auth_config_dict)
 

@@ -56,6 +56,17 @@ async def lifespan(app: FastAPI):
                 service_meta={
                     "version": settings.app_version,
                     "description": "服务注册与发现中心",
+                    # 声明认证需求，网关会自动应用到路由规则
+                    "auth_config": {
+                        "require_auth": True,
+                        "auth_service_id": "aegis",
+                        "public_paths": [
+                            "/health",
+                            "/docs",
+                            "/redoc",
+                            "/openapi.json",
+                        ],
+                    },
                 },
             )
             await register_service(db, self_service)
