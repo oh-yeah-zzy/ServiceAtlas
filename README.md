@@ -58,16 +58,16 @@ python run.py
 python run.py --reload --debug
 
 # 自定义地址和端口
-python run.py --host 0.0.0.0 --port 9000
+python run.py --host 0.0.0.0 --port 8888
 ```
 
 ### 3. 访问
 
 | 地址 | 说明 |
 |------|------|
-| http://127.0.0.1:9000 | Web 管理界面 |
-| http://127.0.0.1:9000/docs | Swagger API 文档 |
-| http://127.0.0.1:9000/redoc | ReDoc API 文档 |
+| http://127.0.0.1:8888 | Web 管理界面 |
+| http://127.0.0.1:8888/docs | Swagger API 文档 |
+| http://127.0.0.1:8888/redoc | ReDoc API 文档 |
 
 ---
 
@@ -138,7 +138,7 @@ from serviceatlas_client.decorators import fastapi_lifespan
 
 # 创建注册 lifespan
 lifespan = fastapi_lifespan(
-    registry_url="http://127.0.0.1:9000",
+    registry_url="http://127.0.0.1:8888",
     service_id="deckview",
     service_name="DeckView 文档预览服务",
     host="127.0.0.1",
@@ -161,7 +161,7 @@ def docs():
 from serviceatlas_client import ServiceAtlasClient
 
 client = ServiceAtlasClient(
-    registry_url="http://127.0.0.1:9000",
+    registry_url="http://127.0.0.1:8888",
     service_id="my-service",
     service_name="我的服务",
     host="127.0.0.1",
@@ -184,7 +184,7 @@ client.start()
 
 ```bash
 # 注册服务
-curl -X POST http://localhost:9000/api/v1/services \
+curl -X POST http://localhost:8888/api/v1/services \
   -H "Content-Type: application/json" \
   -d '{
     "id": "deckview",
@@ -196,10 +196,10 @@ curl -X POST http://localhost:9000/api/v1/services \
   }'
 
 # 心跳上报
-curl -X POST http://localhost:9000/api/v1/services/deckview/heartbeat
+curl -X POST http://localhost:8888/api/v1/services/deckview/heartbeat
 
 # 注销服务
-curl -X DELETE http://localhost:9000/api/v1/services/deckview
+curl -X DELETE http://localhost:8888/api/v1/services/deckview
 ```
 
 **优点**: 跨语言支持
@@ -265,7 +265,7 @@ curl -X DELETE http://localhost:9000/api/v1/services/deckview
 ```bash
 # 服务器配置
 HOST=127.0.0.1
-PORT=9000
+PORT=8888
 DEBUG=false
 
 # 数据库
@@ -293,13 +293,13 @@ BASE_PATH=/s/serviceatlas   # URL 前缀，用于 Aegis 等网关代理
 
 ```bash
 # 直接访问模式（不设置）
-python run.py --host 127.0.0.1 --port 9000
+python run.py --host 127.0.0.1 --port 8888
 
 # 通过 Aegis 网关代理访问（设置 BASE_PATH）
-BASE_PATH=/s/serviceatlas python run.py --host 127.0.0.1 --port 9000
+BASE_PATH=/s/serviceatlas python run.py --host 127.0.0.1 --port 8888
 ```
 
-**注意**：设置 BASE_PATH 后，直接访问 `http://localhost:9000/` 将无法正常工作，因为静态资源路径会变成 `/s/serviceatlas/static/...`。请根据实际访问方式选择是否设置
+**注意**：设置 BASE_PATH 后，直接访问 `http://localhost:8888/` 将无法正常工作，因为静态资源路径会变成 `/s/serviceatlas/static/...`。请根据实际访问方式选择是否设置
 
 ### SDK 配置参数
 
