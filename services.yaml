@@ -31,10 +31,9 @@ services:
   #     auth_config:
   #       require_auth: true
   #       auth_service_id: aegis
+  #       # API 文档不再公开，需要认证后才能访问
   #       public_paths:
   #         - /health
-  #         - /api/docs
-  #         - /api/docs/**
 
   # API 网关服务示例（Hermes）
   # - id: hermes
@@ -68,6 +67,6 @@ routes:
   #   auth_config:
   #     require_auth: true
   #     auth_service_id: aegis
+  #     # API 文档不再公开，需要认证后才能访问
   #     public_paths:
   #       - /health
-  #       - /api/docs

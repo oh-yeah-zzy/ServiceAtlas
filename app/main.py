@@ -60,11 +60,9 @@ async def lifespan(app: FastAPI):
                     "auth_config": {
                         "require_auth": True,
                         "auth_service_id": "aegis",
+                        # API 文档不再公开，需要认证后才能访问
                         "public_paths": [
                             "/health",
-                            "/docs",
-                            "/redoc",
-                            "/openapi.json",
                         ],
                     },
                 },
