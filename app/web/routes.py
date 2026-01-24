@@ -1,21 +1,16 @@
 """
 Web 管理界面路由
-提供仪表盘、服务管理、拓扑图等页面
-"""
-from fastapi import APIRouter, Request, Depends
-from fastapi.templating import Jinja2Templates
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import BASE_DIR, settings
-from app.database import get_db
-from app.services import discovery as discovery_service
-from app.services import dependency as dependency_service
+⚠️ 已迁移到 Vue SPA：所有 Jinja2 页面现在 302 跳转到 Vue 前端
+保留这些路由是为了兼容旧链接
+"""
+from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
+
+from app.config import settings
 
 
 router = APIRouter()
-
-# 模板引擎
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 def get_base_path(request: Request) -> str:
@@ -31,51 +26,40 @@ def get_base_path(request: Request) -> str:
     return settings.base_path.rstrip("/")
 
 
-def get_template_context(request: Request, title: str, **kwargs) -> dict:
-    """生成模板上下文，自动包含 base_path"""
-    return {
-        "request": request,
-        "title": title,
-        "base_path": get_base_path(request),
-        **kwargs,
-    }
+def get_vue_app_url(request: Request, hash_path: str = "/") -> str:
+    """
+    构建 Vue SPA 的 URL
+
+    Args:
+        request: FastAPI Request 对象
+        hash_path: Vue 的 hash 路由路径，如 /、/services、/topology
+
+    Returns:
+        完整的 Vue SPA URL，如 /serviceatlas/app/#/services
+    """
+    base_path = get_base_path(request)
+    return f"{base_path}/app/#{hash_path}"
 
 
 @router.get("/", include_in_schema=False)
-async def dashboard(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """仪表盘首页"""
-    stats = await discovery_service.get_service_stats(db)
-    return templates.TemplateResponse(
-        "dashboard.html",
-        get_template_context(request, "ServiceAtlas - 仪表盘", stats=stats)
-    )
+async def root(request: Request):
+    """根路径 - 重定向到 Vue 前端"""
+    return RedirectResponse(url=get_vue_app_url(request, "/"), status_code=302)
+
+
+@router.get("/dashboard", include_in_schema=False)
+async def dashboard(request: Request):
+    """仪表盘首页 - 302 跳转到 Vue"""
+    return RedirectResponse(url=get_vue_app_url(request, "/"), status_code=302)
 
 
 @router.get("/services", include_in_schema=False)
-async def services_page(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """服务列表页面"""
-    from app.services import registry as registry_service
-    services = await registry_service.get_all_services(db)
-    return templates.TemplateResponse(
-        "services.html",
-        get_template_context(request, "ServiceAtlas - 服务管理", services=services)
-    )
+async def services_page(request: Request):
+    """服务列表页面 - 302 跳转到 Vue"""
+    return RedirectResponse(url=get_vue_app_url(request, "/services"), status_code=302)
 
 
 @router.get("/topology", include_in_schema=False)
-async def topology_page(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """依赖拓扑图页面"""
-    topology = await dependency_service.get_topology(db)
-    return templates.TemplateResponse(
-        "topology.html",
-        get_template_context(request, "ServiceAtlas - 依赖拓扑", topology=topology.model_dump())
-    )
+async def topology_page(request: Request):
+    """依赖拓扑图页面 - 302 跳转到 Vue"""
+    return RedirectResponse(url=get_vue_app_url(request, "/topology"), status_code=302)

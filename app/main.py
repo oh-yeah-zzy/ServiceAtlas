@@ -4,15 +4,17 @@ FastAPI 应用入口
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, RedirectResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings, BASE_DIR
 from app.database import init_db, async_session_maker
 from app.api import api_router
-from app.web.routes import router as web_router
+# Jinja2 Web 路由（已禁用，保留文件以备回退）
+# from app.web.routes import router as web_router
 from app.services.health import check_all_services, check_heartbeat_timeout
 from app.services.preload import preload_services
 from app.services.registry import register_service, heartbeat as service_heartbeat
@@ -123,8 +125,16 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 # 注册 API 路由
 app.include_router(api_router, prefix=settings.api_prefix)
 
-# 注册 Web 界面路由
-app.include_router(web_router)
+# 注册 Web 界面路由（已禁用，保留文件以备回退）
+# app.include_router(web_router)
+
+
+# 根路径重定向到 Vue 前端
+@app.get("/", include_in_schema=False)
+async def root(request: Request):
+    from fastapi.responses import RedirectResponse
+    base_path = request.headers.get("X-Forwarded-Prefix", "").rstrip("/")
+    return RedirectResponse(url=f"{base_path}/app")
 
 
 # 健康检查端点（供自身健康检查）
@@ -138,3 +148,22 @@ async def health():
 async def favicon():
     """返回空的 favicon，避免 404 错误"""
     return Response(status_code=204)
+
+
+# Vue 前端路由（如果构建产物存在）
+VUE_APP_DIR = BASE_DIR / "static" / "app"
+if VUE_APP_DIR.exists() and (VUE_APP_DIR / "index.html").exists():
+    # 挂载 Vue 静态资源
+    app.mount("/app/assets", StaticFiles(directory=str(VUE_APP_DIR / "assets")), name="vue-assets")
+
+    @app.get("/app", include_in_schema=False)
+    async def vue_app_redirect(request: Request):
+        """重定向到带末尾斜杠的路径，确保相对路径正确解析"""
+        prefix = request.headers.get("X-Forwarded-Prefix", "").rstrip("/")
+        return RedirectResponse(url=f"{prefix}/app/", status_code=302)
+
+    @app.get("/app/", include_in_schema=False)
+    @app.get("/app/{path:path}", include_in_schema=False)
+    async def vue_app(path: str = ""):
+        """Vue SPA 入口，所有路由返回 index.html"""
+        return FileResponse(str(VUE_APP_DIR / "index.html"))
